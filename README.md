@@ -1,6 +1,6 @@
-# Data Sources for US-Listed Stocks (last update August 2025)
+## Mapping CIKs to Stock Names and Tickers for US Listed Stocks CIKs (last update August 2025)
 
-## Company Identifier Misalignment: Bloomberg vs. SEC/EDGAR
+## Company Identifier Misalignment
 Bloomberg identifies companies through **name, ticker, and ISIN**, whereas the SEC's EDGAR system relies primarily on **company name** and its unique **10-digit CIK identifier** (with occasional tickers, but no ISIN, CUSIP, LEI, etc.).  
 This misalignment complicates reconciliation between Bloomberg and EDGAR.
 
