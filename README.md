@@ -28,7 +28,7 @@ The [EDGAR full-index](https://www.sec.gov/Archives/edgar/full-index/) archives 
 - Provides comprehensive historical coverage dating back to 1993.  
 - Each entry is identified by **company name** and **CIK**, allowing consistent linkage to other datasets.  
 
-In [cik-lookup-data.txt](https://www.sec.gov/Archives/edgar/cik-lookup-data.txt) file:
+In the [cik-lookup-data.txt](https://www.sec.gov/Archives/edgar/cik-lookup-data.txt) file:
 - Each line reports the **company name** and the **CIK**.  
 
 ---
