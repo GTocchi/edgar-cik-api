@@ -9,7 +9,7 @@ The **goal of this project** is to provide a unified, programmatic mapping betwe
 ---
 
 ## Data Sources: SEC Company Mapping Files
-Several SEC sources provide company mapping information, including bulk data files recompiled nightly and made available via the [SEC EDGAR API](https://www.sec.gov/edgar/searchedgar/companysearch.html):
+Several SEC sources provide company mapping information, including bulk data files recompiled nightly and made available via the [SEC EDGAR API](https://www.sec.gov/search-filings/edgar-application-programming-interfaces):
 
 1) **companyfacts.zip**: 18,826 companies. Each record is a JSON file keyed by CIK (e.g., `CIK0002053927.json`) and includes CIK and company name.  
 2) **submissions.zip**: 927,405 companies. Each JSON file includes CIK, company name, and ticker. Tickers are populated for 6,813 companies. 
