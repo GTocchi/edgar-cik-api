@@ -6,7 +6,7 @@ app = FastAPI(title="EDGAR CIK Mapping API (Online JSON)")
 # -----------------------
 # Load JSON at startup
 # -----------------------
-JSON_URL = "https://gtocchi.github.io/edgar_merged_json/result_merged.json"
+JSON_URL = "https://raw.githubusercontent.com/GTocchi/edgar-cik-api/c0967407390470325225d8e99847115f0d99d622/result_merged.json.gz"
 print("📥 Downloading JSON...")
 
 try:
