@@ -57,13 +57,15 @@ def find_by_ticker(ticker: str):
     with gzip.GzipFile(fileobj=BytesIO(data_bytes)) as f:
         parser = ijson.kvitems(f, "")
         for key, value in parser:
-            # Check primary ticker
-            if value.get("primary_ticker", "").upper() == ticker:
+            # Safely handle missing or None values
+            primary = str(value.get("primary_ticker") or "").upper()
+            if primary == ticker:
                 matches.append(value)
                 continue
-            # Check secondary tickers
-            for sec in value.get("secondary_securities", []):
-                if sec.upper() == ticker:
+
+            # Check secondary tickers safely
+            for sec in value.get("secondary_securities", []) or []:
+                if str(sec or "").upper() == ticker:
                     matches.append(value)
                     break
     return matches
