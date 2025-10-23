@@ -1,10 +1,10 @@
 ## Mapping CIKs to Stock Names and Tickers for US Listed Stocks (last update August 2025)
 
 ## Company Identifier Misalignment
-Data providers like Bloomberg identify companies through **name, ticker, and ISIN**, whereas the SEC's EDGAR system (that includes US-listed stocks) relies primarily on **name** and its unique **10-digit CIK identifier** (with occasional tickers, but no ISIN, CUSIP, LEI, etc.).  
+Data providers like Bloomberg identify entities through **name, ticker, and ISIN**, whereas the SEC's EDGAR system (that includes US-listed stocks) relies primarily on **name** and its unique **10-digit CIK identifier** (with occasional tickers, but no ISIN, CUSIP, LEI, etc.).  
 This misalignment complicates reconciliation between Bloomberg and ther data sources and EDGAR.
 
-The **goal of this project** is to provide a unified, programmatic mapping between CIKs, tickers and names, enabling fast and bulk reconciliation of EDGAR filings with market data, **covering every registered company, fund, and security that ever filed with the SEC.**
+The **goal of this project** is to provide a unified, programmatic mapping between CIKs, tickers and names, enabling fast and bulk reconciliation of EDGAR filings with market data, **covering every registered company, fund, subsidiaries, trusts, funds and other entity that ever filed with the SEC.**
 
 ---
 
@@ -37,7 +37,8 @@ In the [cik-lookup-data.txt](https://www.sec.gov/Archives/edgar/cik-lookup-data.
 To reconcile inconsistencies, a unified JSON dictionary was created using **CIK as the key**:  
 - [result_merged.json](https://gtocchi.github.io/edgar_merged_json/result_merged.json)  
 
-Each record integrates company names and tickers from all three sources when available, ensuring the most complete representation and easier cross-reference between Bloomberg and SEC/EDGAR.  
+- Each record integrates company names and tickers from all three sources when available.
+- Ensures the most complete representation of each entity and facilitates cross-referencing between Bloomberg/data providers and SEC/EDGAR.
 
 **Example entry for CIK `0000008177`:**
 
