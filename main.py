@@ -1,5 +1,8 @@
 from fastapi import FastAPI, HTTPException
 import requests
+import gzip
+import json
+from io import BytesIO
 
 app = FastAPI(title="EDGAR CIK Mapping API (Online JSON)")
 
@@ -12,14 +15,20 @@ print("📥 Downloading JSON...")
 try:
     resp = requests.get(JSON_URL)
     resp.raise_for_status()
-    raw_data = resp.json()
+
+    # Decompress the gzipped JSON
+    with gzip.GzipFile(fileobj=BytesIO(resp.content)) as f:
+        raw_data = json.load(f)
+
 except Exception as e:
-    print("❌ Failed to download JSON:", e)
+    print("❌ Failed to download or parse JSON:", e)
     raw_data = {}
 
 print(f"✅ Loaded {len(raw_data)} entries")
 
+# -----------------------
 # Build fast lookup dictionaries
+# -----------------------
 cik_index = {}       # CIK -> info
 ticker_index = {}    # ticker -> list of CIKs
 
