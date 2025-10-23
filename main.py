@@ -1,11 +1,10 @@
 from fastapi import FastAPI, HTTPException
 import requests
 import gzip
-from io import BytesIO
 import ijson
 from functools import lru_cache
 
-app = FastAPI(title="EDGAR CIK Streaming API with Cache")
+app = FastAPI(title="EDGAR CIK Streaming API (Render-safe)")
 
 # GitHub raw URL to your compressed JSON
 JSON_URL = "https://github.com/GTocchi/edgar-cik-api/raw/main/result_merged.json.gz"
@@ -14,20 +13,20 @@ JSON_URL = "https://github.com/GTocchi/edgar-cik-api/raw/main/result_merged.json
 # Helper functions with caching
 # -----------------------
 
-@lru_cache(maxsize=1024)  # cache up to 1024 recently requested CIKs
+@lru_cache(maxsize=1024)
 def find_by_cik(cik: str):
-    """Stream the JSON and return the info for a single CIK."""
+    """Stream the JSON and return info for a single CIK."""
     resp = requests.get(JSON_URL, stream=True)
     resp.raise_for_status()
 
-    with gzip.GzipFile(fileobj=BytesIO(resp.content)) as f:
+    with gzip.GzipFile(fileobj=resp.raw) as f:  # <--- use resp.raw to stream
         parser = ijson.kvitems(f, "")
         for key, value in parser:
             if key == cik:
                 return value
     return None
 
-@lru_cache(maxsize=512)  # cache up to 512 recently requested tickers
+@lru_cache(maxsize=512)
 def find_by_ticker(ticker: str):
     """Stream the JSON and return all entries matching a ticker."""
     ticker = ticker.upper()
@@ -36,7 +35,7 @@ def find_by_ticker(ticker: str):
     resp = requests.get(JSON_URL, stream=True)
     resp.raise_for_status()
 
-    with gzip.GzipFile(fileobj=BytesIO(resp.content)) as f:
+    with gzip.GzipFile(fileobj=resp.raw) as f:  # <--- stream directly
         parser = ijson.kvitems(f, "")
         for key, value in parser:
             # Check primary ticker
