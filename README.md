@@ -1,6 +1,6 @@
 ## Mapping CIKs, Entity Names and Tickers (last update October 2025)
 
-## Company Identifier Misalignment
+## Identification Misalignment
 The **goal of this project** is to provide a unified, programmatic mapping between CIKs, tickers and entity names, enabling fast and bulk reconciliation of EDGAR filings with market data, **covering every registered company, fund, subsidiaries, trusts, funds and other entity that ever filed with the SEC.**
 
 Data providers like Bloomberg identify entities through **name, ticker, and ISIN**, whereas the SEC's EDGAR system relies primarily on **name** and its unique **10-digit CIK identifier** (with occasional tickers, but no ISIN, CUSIP, LEI, etc.).  
@@ -12,13 +12,13 @@ This misalignment complicates reconciliation between Bloomberg/other data source
 Several SEC sources provide entities mapping information, including bulk data files recompiled nightly and made available via the [SEC EDGAR API](https://www.sec.gov/search-filings/edgar-application-programming-interfaces):
 
 1) **companyfacts.zip**: 18,826 entities. Each record is a JSON file keyed by CIK (e.g., `CIK0002053927.json`) and includes CIK and name.  
-2) **submissions.zip**: 927,405 entities. Each JSON file includes CIK, name, and ticker. Tickers are populated for 6,813 companies. 
+2) **submissions.zip**: 927,405 entities. Each JSON file includes CIK, name, and ticker. Tickers are populated for 6,813 entities. 
 
 Moreover an additional file used is:
 3) **[company_tickers_exchange.json](https://www.sec.gov/files/company_tickers_exchange.json)**: 7,847 entities, including CIK, name, and ticker.  
 
 **Coverage and consistency:**
-- All 18,826 entities in `companyfacts.zip` are present in `submissions.zip`, but only **41% of company names match exactly** due to naming variations.  
+- All 18,826 entities in `companyfacts.zip` are present in `submissions.zip`, but only **41% of entities names match exactly** due to naming variations.  
 - All 7,847 entities in `company_tickers_exchange.json` are present in `submissions.zip`, with **87% exact name matches**.
 
 ---
