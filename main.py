@@ -1,68 +1,69 @@
 from fastapi import FastAPI, HTTPException
 import requests
 import gzip
-import json
 from io import BytesIO
+import ijson
+from functools import lru_cache
 
-app = FastAPI(title="EDGAR CIK Mapping API (Online JSON)")
+app = FastAPI(title="EDGAR CIK Streaming API with Cache")
 
-# -----------------------
-# Load JSON at startup
-# -----------------------
+# GitHub raw URL to your compressed JSON
 JSON_URL = "https://github.com/GTocchi/edgar-cik-api/raw/main/result_merged.json.gz"
-print("📥 Downloading JSON...")
 
-try:
-    resp = requests.get(JSON_URL)
+# -----------------------
+# Helper functions with caching
+# -----------------------
+
+@lru_cache(maxsize=1024)  # cache up to 1024 recently requested CIKs
+def find_by_cik(cik: str):
+    """Stream the JSON and return the info for a single CIK."""
+    resp = requests.get(JSON_URL, stream=True)
     resp.raise_for_status()
 
-    # Decompress the gzipped JSON
     with gzip.GzipFile(fileobj=BytesIO(resp.content)) as f:
-        raw_data = json.load(f)
+        parser = ijson.kvitems(f, "")
+        for key, value in parser:
+            if key == cik:
+                return value
+    return None
 
-except Exception as e:
-    print("❌ Failed to download or parse JSON:", e)
-    raw_data = {}
+@lru_cache(maxsize=512)  # cache up to 512 recently requested tickers
+def find_by_ticker(ticker: str):
+    """Stream the JSON and return all entries matching a ticker."""
+    ticker = ticker.upper()
+    matches = []
 
-print(f"✅ Loaded {len(raw_data)} entries")
+    resp = requests.get(JSON_URL, stream=True)
+    resp.raise_for_status()
+
+    with gzip.GzipFile(fileobj=BytesIO(resp.content)) as f:
+        parser = ijson.kvitems(f, "")
+        for key, value in parser:
+            # Check primary ticker
+            if value.get("primary_ticker", "").upper() == ticker:
+                matches.append(value)
+                continue
+            # Check secondary tickers
+            for sec in value.get("secondary_securities", []):
+                if sec.upper() == ticker:
+                    matches.append(value)
+                    break
+    return matches
 
 # -----------------------
-# Build fast lookup dictionaries
+# API Endpoints
 # -----------------------
-cik_index = {}       # CIK -> info
-ticker_index = {}    # ticker -> list of CIKs
 
-for cik, info in raw_data.items():
-    cik_index[cik] = info
-
-    # Primary ticker
-    pt = info.get("primary_ticker")
-    if pt:
-        ticker_index.setdefault(pt.upper(), []).append(cik)
-
-    # Secondary tickers
-    for sec in info.get("secondary_securities", []):
-        ticker_index.setdefault(sec.upper(), []).append(cik)
-
-print("✅ Indexes built")
-
-# -----------------------
-# CIK endpoint
-# -----------------------
 @app.get("/cik/{cik}")
 def get_by_cik(cik: str):
-    info = cik_index.get(cik)
-    if info:
-        return info
+    data = find_by_cik(cik)
+    if data:
+        return data
     raise HTTPException(status_code=404, detail="CIK not found")
 
-# -----------------------
-# Ticker endpoint
-# -----------------------
 @app.get("/ticker/{ticker}")
 def get_by_ticker(ticker: str):
-    ticker = ticker.upper()
-    ciks = ticker_index.get(ticker, [])
-    if not ciks:
+    data = find_by_ticker(ticker)
+    if not data:
         raise HTTPException(status_code=404, detail="Ticker not found")
-    return [cik_index[cik] for cik in ciks]
+    return data
