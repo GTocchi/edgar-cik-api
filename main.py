@@ -1,35 +1,50 @@
-
 from fastapi import FastAPI, HTTPException
-import sqlite3
-import json
+import requests
 
-app = FastAPI(title="EDGAR CIK Mapping API (SQLite)")
-DB_PATH = "data.db"
+app = FastAPI(title="EDGAR CIK Mapping API (Online JSON)")
 
 # -----------------------
-# Helper to get DB connection
+# Load JSON at startup
 # -----------------------
-def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row  # rows behave like dicts
-    return conn
+JSON_URL = "https://gtocchi.github.io/edgar_merged_json/result_merged.json"
+print("📥 Downloading JSON...")
+
+try:
+    resp = requests.get(JSON_URL)
+    resp.raise_for_status()
+    raw_data = resp.json()
+except Exception as e:
+    print("❌ Failed to download JSON:", e)
+    raw_data = {}
+
+print(f"✅ Loaded {len(raw_data)} entries")
+
+# Build fast lookup dictionaries
+cik_index = {}       # CIK -> info
+ticker_index = {}    # ticker -> list of CIKs
+
+for cik, info in raw_data.items():
+    cik_index[cik] = info
+
+    # Primary ticker
+    pt = info.get("primary_ticker")
+    if pt:
+        ticker_index.setdefault(pt.upper(), []).append(cik)
+
+    # Secondary tickers
+    for sec in info.get("secondary_securities", []):
+        ticker_index.setdefault(sec.upper(), []).append(cik)
+
+print("✅ Indexes built")
 
 # -----------------------
 # CIK endpoint
 # -----------------------
 @app.get("/cik/{cik}")
 def get_by_cik(cik: str):
-    conn = get_db_connection()
-    row = conn.execute("SELECT * FROM companies WHERE cik=?", (cik,)).fetchone()
-    conn.close()
-
-    if row:
-        return {
-            "cik": row["cik"],
-            "primary_ticker": row["primary_ticker"],
-            "secondary_securities": json.loads(row["secondary_securities"]),
-            "denomination": json.loads(row["denomination"])
-        }
+    info = cik_index.get(cik)
+    if info:
+        return info
     raise HTTPException(status_code=404, detail="CIK not found")
 
 # -----------------------
@@ -38,22 +53,7 @@ def get_by_cik(cik: str):
 @app.get("/ticker/{ticker}")
 def get_by_ticker(ticker: str):
     ticker = ticker.upper()
-    conn = get_db_connection()
-    rows = conn.execute("""
-        SELECT * FROM companies
-        WHERE UPPER(primary_ticker)=?
-           OR secondary_securities LIKE ?
-    """, (ticker, f'%"{ticker}"%')).fetchall()
-    conn.close()
-
-    if not rows:
+    ciks = ticker_index.get(ticker, [])
+    if not ciks:
         raise HTTPException(status_code=404, detail="Ticker not found")
-
-    return [
-        {
-            "cik": r["cik"],
-            "primary_ticker": r["primary_ticker"],
-            "secondary_securities": json.loads(r["secondary_securities"]),
-            "denomination": json.loads(r["denomination"])
-        } for r in rows
-    ]
+    return [cik_index[cik] for cik in ciks]
