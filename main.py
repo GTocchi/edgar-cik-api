@@ -2,43 +2,58 @@ from fastapi import FastAPI, HTTPException
 import requests
 import gzip
 import ijson
+import json
 from io import BytesIO
 from functools import lru_cache
 from threading import Lock
 
-app = FastAPI(title="EDGAR CIK Streaming API (Render-safe)")
+app = FastAPI(title="EDGAR CIK/Ticker API (Dual-source, Cached)")
 
 # ------------------------------------------------
 # Config
 # ------------------------------------------------
-JSON_URL = "https://github.com/GTocchi/edgar-cik-api/raw/main/result_merged.json.gz"
+CIK_JSON_URL = "https://github.com/GTocchi/edgar-cik-api/raw/main/result_cik_keyed.json.gz"
+TICKER_JSON_URL = "https://github.com/GTocchi/edgar-cik-api/raw/main/result_ticker_keyed.json.gz"
 
-# In-memory cache so we don’t re-download the file every request
-_cached_bytes = None
+# Separate caches
 _cache_lock = Lock()
+_cached_files = {}
+_ticker_map = None  # in-memory dictionary for ticker lookups
 
 
 # ------------------------------------------------
-# Helper function: load gzipped JSON bytes once
+# Helpers
 # ------------------------------------------------
-def get_gzipped_data() -> bytes:
-    """Download and cache the gzipped JSON file from GitHub."""
-    global _cached_bytes
+def get_gzipped_data(url: str) -> bytes:
+    """Download and cache gzipped JSON file."""
     with _cache_lock:
-        if _cached_bytes is None:
-            resp = requests.get(JSON_URL)
+        if url not in _cached_files:
+            print(f"⬇️ Downloading {url}")
+            resp = requests.get(url)
             resp.raise_for_status()
-            _cached_bytes = resp.content
-        return _cached_bytes
+            _cached_files[url] = resp.content
+        return _cached_files[url]
+
+
+def load_ticker_map():
+    """Load ticker-keyed map into memory once."""
+    global _ticker_map
+    if _ticker_map is None:
+        print("🔄 Loading ticker map into memory...")
+        data_bytes = get_gzipped_data(TICKER_JSON_URL)
+        with gzip.GzipFile(fileobj=BytesIO(data_bytes)) as f:
+            _ticker_map = json.load(f)
+        print(f"✅ Loaded {_ticker_map and len(_ticker_map):,} tickers into memory.")
+    return _ticker_map
 
 
 # ------------------------------------------------
-# Stream readers with caching
+# Lookup functions
 # ------------------------------------------------
 @lru_cache(maxsize=1024)
 def find_by_cik(cik: str):
-    """Stream the JSON and return info for a single CIK."""
-    data_bytes = get_gzipped_data()
+    """Stream-search for a single CIK."""
+    data_bytes = get_gzipped_data(CIK_JSON_URL)
     with gzip.GzipFile(fileobj=BytesIO(data_bytes)) as f:
         parser = ijson.kvitems(f, "")
         for key, value in parser:
@@ -47,28 +62,12 @@ def find_by_cik(cik: str):
     return None
 
 
-@lru_cache(maxsize=512)
 def find_by_ticker(ticker: str):
-    """Stream the JSON and return all entries matching a ticker."""
+    """O(1) lookup by ticker using preloaded map."""
+    ticker_map = load_ticker_map()
     ticker = ticker.upper()
-    matches = []
-
-    data_bytes = get_gzipped_data()
-    with gzip.GzipFile(fileobj=BytesIO(data_bytes)) as f:
-        parser = ijson.kvitems(f, "")
-        for key, value in parser:
-            # Safely handle missing or None values
-            primary = str(value.get("primary_ticker") or "").upper()
-            if primary == ticker:
-                matches.append(value)
-                continue
-
-            # Check secondary tickers safely
-            for sec in value.get("secondary_securities", []) or []:
-                if str(sec or "").upper() == ticker:
-                    matches.append(value)
-                    break
-    return matches
+    result = ticker_map.get(ticker)
+    return result
 
 
 # ------------------------------------------------
@@ -78,9 +77,9 @@ def find_by_ticker(ticker: str):
 def get_by_cik(cik: str):
     try:
         data = find_by_cik(cik)
-        if data:
-            return data
-        raise HTTPException(status_code=404, detail="CIK not found")
+        if not data:
+            raise HTTPException(status_code=404, detail="CIK not found")
+        return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Server error: {e}")
 
@@ -97,12 +96,13 @@ def get_by_ticker(ticker: str):
 
 
 # ------------------------------------------------
-# Optional: Preload cache at startup (improves Render cold start)
+# Preload both datasets at startup
 # ------------------------------------------------
 @app.on_event("startup")
 def preload_data():
     try:
-        get_gzipped_data()
-        print("✅ Cached gzipped JSON data at startup.")
+        get_gzipped_data(CIK_JSON_URL)
+        load_ticker_map()
+        print("🚀 Cached both CIK and Ticker data at startup.")
     except Exception as e:
         print(f"⚠️ Failed to preload data: {e}")
