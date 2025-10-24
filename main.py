@@ -30,7 +30,7 @@ def get_gzipped_data(url: str) -> bytes:
     """Download and cache a gzipped JSON file from GitHub."""
     with _cache_lock:
         if url not in _cached_files:
-            print(f"⬇️ Downloading {url}")
+            print(f"Downloading {url}")
             resp = requests.get(url)
             resp.raise_for_status()
             _cached_files[url] = resp.content
@@ -41,13 +41,13 @@ def load_ticker_map():
     """Load the ticker-keyed map into memory once."""
     global _ticker_map
     if _ticker_map is None:
-        print("🔄 Loading ticker map into memory...")
+        print("Loading ticker map into memory...")
         data_bytes = get_gzipped_data(TICKER_JSON_URL)
         with gzip.GzipFile(fileobj=BytesIO(data_bytes)) as f:
             _ticker_map = json.load(f)
         # Convert all keys to uppercase for case-insensitive lookup
         _ticker_map = {k.upper(): v for k, v in _ticker_map.items()}
-        print(f"✅ Loaded {_ticker_map and len(_ticker_map):,} tickers into memory.")
+        print(f"Loaded {_ticker_map and len(_ticker_map):,} tickers into memory.")
     return _ticker_map
 
 
