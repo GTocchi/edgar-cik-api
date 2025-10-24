@@ -109,6 +109,6 @@ def preload_data():
     try:
         get_gzipped_data(CIK_JSON_URL)
         load_ticker_map()
-        print("🚀 Cached both CIK and Ticker data at startup.")
+        print("Cached both CIK and Ticker data at startup.")
     except Exception as e:
-        print(f"⚠️ Failed to preload data: {e}")
+        print(f"Failed to preload data: {e}")
