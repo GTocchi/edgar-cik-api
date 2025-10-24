@@ -45,6 +45,8 @@ def load_ticker_map():
         data_bytes = get_gzipped_data(TICKER_JSON_URL)
         with gzip.GzipFile(fileobj=BytesIO(data_bytes)) as f:
             _ticker_map = json.load(f)
+        # Convert all keys to uppercase for case-insensitive lookup
+        _ticker_map = {k.upper(): v for k, v in _ticker_map.items()}
         print(f"✅ Loaded {_ticker_map and len(_ticker_map):,} tickers into memory.")
     return _ticker_map
 
@@ -65,25 +67,13 @@ def find_by_cik(cik: str):
 
 
 def find_by_ticker(ticker: str):
-    """Lookup all companies associated with a ticker (may be multiple CIKs)."""
+    """Return company info dict directly for a ticker (case-insensitive)."""
     ticker_map = load_ticker_map()
     ticker = ticker.upper()
-    
-    ciks = ticker_map.get(ticker)
-    if not ciks:
+    entry = ticker_map.get(ticker)
+    if not entry:
         return []
-    
-    # Ensure it's always a list
-    if isinstance(ciks, str):
-        ciks = [ciks]
-    
-    results = []
-    for cik in ciks:
-        company = find_by_cik(cik)
-        if company:
-            results.append(company)
-    
-    return results
+    return [entry]  # wrap in a list for consistent return type
 
 
 # ------------------------------------------------
@@ -106,7 +96,7 @@ def get_by_ticker(ticker: str):
         data = find_by_ticker(ticker)
         if not data:
             raise HTTPException(status_code=404, detail="Ticker not found")
-        return data  # always a list of 1+ companies
+        return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Server error: {e}")
 
