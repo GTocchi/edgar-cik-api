@@ -15,17 +15,19 @@ app = FastAPI(title="EDGAR CIK/Ticker API (Dual-source, Cached)")
 CIK_JSON_URL = "https://github.com/GTocchi/edgar-cik-api/raw/main/result_cik_keyed.json.gz"
 TICKER_JSON_URL = "https://github.com/GTocchi/edgar-cik-api/raw/main/result_ticker_keyed.json.gz"
 
-# Separate caches
+# ------------------------------------------------
+# In-memory caches
+# ------------------------------------------------
 _cache_lock = Lock()
 _cached_files = {}
-_ticker_map = None  # in-memory dictionary for ticker lookups
+_ticker_map = None  # preloaded dictionary for ticker lookups
 
 
 # ------------------------------------------------
 # Helpers
 # ------------------------------------------------
 def get_gzipped_data(url: str) -> bytes:
-    """Download and cache gzipped JSON file."""
+    """Download and cache a gzipped JSON file from GitHub."""
     with _cache_lock:
         if url not in _cached_files:
             print(f"⬇️ Downloading {url}")
@@ -36,7 +38,7 @@ def get_gzipped_data(url: str) -> bytes:
 
 
 def load_ticker_map():
-    """Load ticker-keyed map into memory once."""
+    """Load the ticker-keyed map into memory once."""
     global _ticker_map
     if _ticker_map is None:
         print("🔄 Loading ticker map into memory...")
@@ -52,7 +54,7 @@ def load_ticker_map():
 # ------------------------------------------------
 @lru_cache(maxsize=1024)
 def find_by_cik(cik: str):
-    """Stream-search for a single CIK."""
+    """Stream-search the CIK-keyed JSON for a single CIK."""
     data_bytes = get_gzipped_data(CIK_JSON_URL)
     with gzip.GzipFile(fileobj=BytesIO(data_bytes)) as f:
         parser = ijson.kvitems(f, "")
@@ -63,11 +65,25 @@ def find_by_cik(cik: str):
 
 
 def find_by_ticker(ticker: str):
-    """O(1) lookup by ticker using preloaded map."""
+    """Lookup all companies associated with a ticker (may be multiple CIKs)."""
     ticker_map = load_ticker_map()
     ticker = ticker.upper()
-    result = ticker_map.get(ticker)
-    return result
+    
+    ciks = ticker_map.get(ticker)
+    if not ciks:
+        return []
+    
+    # Ensure it's always a list
+    if isinstance(ciks, str):
+        ciks = [ciks]
+    
+    results = []
+    for cik in ciks:
+        company = find_by_cik(cik)
+        if company:
+            results.append(company)
+    
+    return results
 
 
 # ------------------------------------------------
@@ -90,7 +106,7 @@ def get_by_ticker(ticker: str):
         data = find_by_ticker(ticker)
         if not data:
             raise HTTPException(status_code=404, detail="Ticker not found")
-        return data
+        return data  # always a list of 1+ companies
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Server error: {e}")
 
