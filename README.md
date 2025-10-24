@@ -1,7 +1,7 @@
 # Mapping CIKs, Entity Names and Tickers (last update October 2025)
 
 ## Identification Misalignment
-The **goal of this project** is to provide a unified, programmatic mapping between CIKs, tickers and entity names, enabling fast and bulk reconciliation of EDGAR filings with market data, **covering every registered company, fund, subsidiaries, trusts, funds and other entity that ever filed with the SEC.**
+The **goal of this project** is to provide a unified, programmatic mapping between CIKs, tickers and entity names via **API**, enabling fast and bulk reconciliation of EDGAR filings with market data, **covering every registered company, fund, subsidiaries, trusts, funds and other entity that ever filed with the SEC.**
 
 Data providers like Bloomberg identify entities through **name, ticker, and ISIN**, whereas the SEC's EDGAR system relies primarily on **name** and its unique **10-digit CIK identifier** (with occasional tickers, but no ISIN, CUSIP, LEI, etc.).  
 This misalignment complicates reconciliation between Bloomberg/other data sources and EDGAR.
